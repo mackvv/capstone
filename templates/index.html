@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMILES Prediction</title>
+    <style>
+        /* Global Styles */
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+
+        h1, h2 {
+            margin: 0;
+        }
+
+        /* Header */
+        header {
+            background-image: url('https://livinginsilico.ca/wp-content/uploads/2024/07/1.jpg');
+            background-size: cover;
+            background-position: center;
+            color: white;
+            text-align: center;
+            padding: 100px 20px;
+        }
+
+        header h1 {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 0;
+            text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Footer */
+        footer {
+            background-color: white;
+            color: #333;
+            text-align: center;
+            padding: 30px 0;
+            margin-top: 30px;
+            border-top: 1px solid #ddd;
+        }
+
+        footer img {
+            width: 150px; /* Increased size */
+            height: auto;
+            margin-bottom: 10px;
+        }
+
+        footer p {
+            font-size: 0.9rem;
+            margin: 0;
+            color: #666;
+        }
+
+        /* Container */
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: auto;
+            padding: 30px 0;
+        }
+
+        /* Form Section */
+        .form-container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .form-container h2 {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+            outline: none;
+        }
+
+        input[type="text"]:focus {
+            border-color: #4CAF50;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: #4CAF50;
+            color: white;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        /* Result Section */
+        .prediction-result, .error-message {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            margin-bottom: 30px;
+        }
+
+        .prediction-result h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+        }
+
+        .error-message {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+            font-weight: bold;
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2.2rem;
+            }
+
+            .form-container {
+                padding: 20px;
+            }
+
+            .form-container h2 {
+                font-size: 1.5rem;
+            }
+
+            input[type="text"], button {
+                font-size: 1rem;
+                padding: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+
+            .container {
+                width: 95%;
+            }
+
+            .form-container {
+                padding: 15px;
+            }
+
+            input[type="text"], button {
+                font-size: 0.9rem;
+                padding: 10px;
+            }
+
+            footer img {
+                width: 120px; /* Adjusted for smaller screens */
+            }
+
+            footer p {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>SMILES String Prediction</h1>
+</header>
+
+<div class="container">
+    <div class="form-container">
+        <h2>Enter a SMILES string for prediction</h2>
+        <form method="POST" action="/predict">
+            <label for="smiles">SMILES String:</label>
+            <input type="text" name="smiles" id="smiles" required>
+            <button type="submit">Predict</button>
+        </form>
+    </div>
+
+    {% if error_message %}
+    <div class="error-message">
+        <strong>Error:</strong> {{ error_message }}
+    </div>
+    {% endif %}
+
+    {% if smiles %}
+    <div class="prediction-result">
+        <h3>Prediction Result</h3>
+        <p><strong>SMILES String:</strong> {{ smiles }}</p>
+        <p><strong>Predicted Assay Outcome:</strong> {{ prediction }}</p>
+    </div>
+    {% endif %}
+</div>
+
+<footer>
+    <img src="https://livinginsilico.ca/wp-content/uploads/2024/05/10.png" alt="Company Logo">
+    <p>&copy; 2024 Living in Silico. All rights reserved.</p>
+</footer>
+
+</body>
+</html>
