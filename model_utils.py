@@ -12,6 +12,14 @@ import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 
+from sklearn.metrics import accuracy_score
+
+def calculate_accuracy(predictions, targets):
+    preds = torch.argmax(torch.softmax(predictions, dim=1), dim=1).cpu().numpy()
+    targets = targets.cpu().numpy()
+    accuracy = accuracy_score(targets, preds)
+    return accuracy
+
 # Path to dataset
 file_path = os.path.join("C:\\", "Users", "macke", "OneDrive", "Desktop", "Capstone", "cleaned_data.csv")
 
@@ -89,18 +97,13 @@ def calculate_metrics(predictions, targets):
     return precision, recall, f1
 
 # Training loop with logging and visualization
+# Training loop with accuracy calculation
 def train_model(model, train_loader, val_loader, criterion, optimizer, device, epochs=11):
-    timestamp = datetime.now().strftime("%b%d_%H-%M-%S")  # Timestamp for the log folder
-    log_dir = f"runs/{timestamp}_epochs_{epochs}"  # Use timestamp and number of epochs in folder name
-    os.makedirs(log_dir, exist_ok=True)  # Create directory if it doesn't exist
-    writer = SummaryWriter(log_dir)  # Set the log directory for TensorBoard
+    timestamp = datetime.now().strftime("%b%d_%H-%M-%S")
+    log_dir = f"runs/{timestamp}_epochs_{epochs}"
+    os.makedirs(log_dir, exist_ok=True)
+    writer = SummaryWriter(log_dir)
     model.to(device)
-
-    train_losses = []
-    val_losses = []
-    precisions = []
-    recalls = []
-    f1_scores = []
 
     for epoch in range(epochs):
         model.train()
@@ -115,73 +118,39 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, e
             epoch_train_loss += loss.item()
 
         train_loss = epoch_train_loss / len(train_loader)
-        train_losses.append(train_loss)
         writer.add_scalar("Loss/Train", train_loss, epoch)
 
         model.eval()
         epoch_val_loss = 0
-        epoch_precision = 0
-        epoch_recall = 0
-        epoch_f1 = 0
+        all_predictions = []
+        all_targets = []
         with torch.no_grad():
             for smiles, outcomes in tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} - Validation", unit="batch"):
                 smiles, outcomes = smiles.to(device), outcomes.to(device)
                 predictions = model(smiles)
                 loss = criterion(predictions, outcomes)
                 epoch_val_loss += loss.item()
-                precision, recall, f1 = calculate_metrics(predictions, outcomes)
-                epoch_precision += precision
-                epoch_recall += recall
-                epoch_f1 += f1
+                
+                # Collect predictions and targets for accuracy calculation
+                all_predictions.append(predictions)
+                all_targets.append(outcomes)
 
         val_loss = epoch_val_loss / len(val_loader)
-        val_losses.append(val_loss)
-        precisions.append(epoch_precision / len(val_loader))
-        recalls.append(epoch_recall / len(val_loader))
-        f1_scores.append(epoch_f1 / len(val_loader))
         writer.add_scalar("Loss/Validation", val_loss, epoch)
-        writer.add_scalar("Metrics/Precision", precisions[-1], epoch)
-        writer.add_scalar("Metrics/Recall", recalls[-1], epoch)
-        writer.add_scalar("Metrics/F1 Score", f1_scores[-1], epoch)
 
-        print(f"Epoch {epoch+1}/{epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
-        print(f"Precision: {precisions[-1]:.4f}, Recall: {recalls[-1]:.4f}, F1 Score: {f1_scores[-1]:.4f}")
+        # Concatenate all predictions and targets
+        all_predictions = torch.cat(all_predictions)
+        all_targets = torch.cat(all_targets)
+        accuracy = calculate_accuracy(all_predictions, all_targets)
+        writer.add_scalar("Accuracy/Validation", accuracy, epoch)
+
+        print(f"Epoch {epoch+1}/{epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val Accuracy: {accuracy:.4f}")
 
     writer.close()
 
-    # Save metrics for visualization
-    plot_metrics(train_losses, val_losses, precisions, recalls, f1_scores, log_dir)
 
-    # Save model
-    torch.save(model.state_dict(), os.path.join(log_dir, "model.pth"))
-    print(f"Model saved to {log_dir}/model.pth")
-
-# Visualization
-def plot_metrics(train_losses, val_losses, precisions, recalls, f1_scores, log_dir):
-    plt.figure(figsize=(12, 6))
-    plt.plot(train_losses, label="Train Loss")
-    plt.plot(val_losses, label="Validation Loss")
-    plt.title("Training and Validation Loss")
-    plt.xlabel("Epochs")
-    plt.ylabel("Loss")
-    plt.legend()
-    plt.savefig(os.path.join(log_dir, "losses.png"))
-    plt.show()
-
-    plt.figure(figsize=(12, 6))
-    plt.plot(precisions, label="Precision")
-    plt.plot(recalls, label="Recall")
-    plt.plot(f1_scores, label="F1 Score")
-    plt.title("Precision, Recall, and F1 Score")
-    plt.xlabel("Epochs")
-    plt.ylabel("Metrics")
-    plt.legend()
-    plt.savefig(os.path.join(log_dir, "metrics.png"))
-    plt.show()
-
-
-# Prediction Function
-def predict_smiles(model, smiles, vocab, device):
+# Prediction Function with Probabilities
+def predict_smiles_with_probabilities(model, smiles, vocab, device):
     model.eval()
     encoded = encode_smiles(smiles, vocab)
     input_tensor = torch.tensor(encoded, dtype=torch.long).unsqueeze(0).to(device)
@@ -189,10 +158,10 @@ def predict_smiles(model, smiles, vocab, device):
         logits = model(input_tensor)
         probabilities = torch.softmax(logits, dim=1)
         prediction = torch.argmax(probabilities, dim=1).item()
-    return prediction
+    return prediction, probabilities.cpu().numpy().flatten()
 
 # Main execution
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda")
 vocab_size = len(vocab)
 embed_dim = 128
 hidden_dim = 256
@@ -202,4 +171,4 @@ criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters())
 
 # Train the model
-train_model(model, train_loader, val_loader, criterion, optimizer, device, epochs=11)
+train_model(model, train_loader, val_loader, criterion, optimizer, device, epochs=50)
